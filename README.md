@@ -1,1 +1,3 @@
 # sort-maze
+
+A*
