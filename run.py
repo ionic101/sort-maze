@@ -1,12 +1,9 @@
-import heapq
 import sys
-
 
 COST_PER_STEP = {'A': 1, 'B': 10, 'C': 100, 'D': 1000}
 TARGET_ROOM_INDEX = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
 HALLWAY_ALLOWED_STOPS = [0, 1, 3, 5, 7, 9, 10]
 ROOM_HALLWAY_POSITIONS = [2, 4, 6, 8]
-
 
 def parse_initial_state(lines):
     hallway = tuple(lines[1][1:12])
@@ -87,13 +84,13 @@ def generate_valid_moves(state):
 
 def estimate_remaining_cost(state):
     hallway, rooms = state
-    total = 0
+    total_cost = 0
     for pos, amphipod_type in enumerate(hallway):
         if amphipod_type == '.':
             continue
         target_room = TARGET_ROOM_INDEX[amphipod_type]
         target_pos = ROOM_HALLWAY_POSITIONS[target_room]
-        total += (abs(pos - target_pos) + 1) * COST_PER_STEP[amphipod_type]
+        total_cost += (abs(pos - target_pos) + 1) * COST_PER_STEP[amphipod_type]
     for room_index, room in enumerate(rooms):
         for depth_index, amphipod_type in enumerate(room):
             if amphipod_type == '.':
@@ -103,8 +100,9 @@ def estimate_remaining_cost(state):
             if target_room != room_index or blocking:
                 from_pos = ROOM_HALLWAY_POSITIONS[room_index]
                 to_pos = ROOM_HALLWAY_POSITIONS[target_room]
-                total += (depth_index + 1 + abs(from_pos - to_pos) + 1) * COST_PER_STEP[amphipod_type]
-    return total
+                total_cost += (depth_index + 1 + abs(from_pos - to_pos) + 1) * COST_PER_STEP[amphipod_type]
+    return total_cost
+
 
 def solve_amphipod_sorting(lines):
     start_state = parse_initial_state(lines)
@@ -112,20 +110,25 @@ def solve_amphipod_sorting(lines):
     target_rooms = tuple(tuple(amphipod for _ in range(room_depth)) for amphipod in ('A', 'B', 'C', 'D'))
     target_state = (tuple('.' for _ in range(11)), target_rooms)
 
-    priority_queue = [(estimate_remaining_cost(start_state), 0, start_state)]
+    open_list = [(estimate_remaining_cost(start_state), 0, start_state)]
     best_costs = {start_state: 0}
 
-    while priority_queue:
-        estimated_total, current_cost, current_state = heapq.heappop(priority_queue)
+    while open_list:
+        open_list.sort(key=lambda x: x[0])
+        estimated_total, current_cost, current_state = open_list.pop(0)
+
         if current_state == target_state:
             return current_cost
         if current_cost > best_costs[current_state]:
             continue
+
         for next_state, move_cost in generate_valid_moves(current_state):
             new_cost = current_cost + move_cost
             if next_state not in best_costs or new_cost < best_costs[next_state]:
                 best_costs[next_state] = new_cost
-                heapq.heappush(priority_queue, (new_cost + estimate_remaining_cost(next_state), new_cost, next_state))
+                estimated_total_cost = new_cost + estimate_remaining_cost(next_state)
+                open_list.append((estimated_total_cost, new_cost, next_state))
+
     return -1
 
 
